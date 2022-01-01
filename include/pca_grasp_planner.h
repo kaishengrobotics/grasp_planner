@@ -29,11 +29,11 @@ class PCAGraspPlanner{
         /**
         * Compute the bounding box associated with an object cloud using PCA.
         *
-        * \param obj_cloud The object point cloud. 
+        * \param obj_cloud The object point cloud with colors. 
         * \param bounding_box [output] The object bounding box.
         */
         void findCloudBoundingBoxPCA(
-                            pcl::PointCloud<pcl::PointXYZRGB>::Ptr& obj_cloud,
+                            const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& obj_color_cloud,
                             BoundingBox& bb);
         /**
         * Generate a heuristic overhead grasp using the object bounding box.
@@ -42,7 +42,7 @@ class PCAGraspPlanner{
         * \param grasp_pose [output] The grasping pose.
         */
         void genOverheadGraspPoseBB(const BoundingBox& bb, 
-                                    geometry_msgs::Pose &grasp_pose);
+                                    geometry_msgs::PoseStamped& grasp_pose);
         
     private:
         // Visualize the bounding box or not.

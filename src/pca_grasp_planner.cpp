@@ -15,8 +15,8 @@
 #include <pca_grasp_planner.h>
 
 void PCAGraspPlanner::findCloudBoundingBoxPCA(
-                            pcl::PointCloud<pcl::PointXYZRGB>::Ptr& obj_cloud,
-                            BoundingBox& bb);
+                            const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& obj_color_cloud,
+                            BoundingBox& bb)
 {
     Eigen::Vector3f eigen_values;
     Eigen::Matrix3f eigen_vectors;
@@ -24,16 +24,16 @@ void PCAGraspPlanner::findCloudBoundingBoxPCA(
     // Remove the RGB components from the input cloud
     pcl::PointCloud<pcl::PointXYZ> obj_cloud;
     pcl::copyPointCloud(*obj_color_cloud, obj_cloud);
-    pcl::PCA<pcl::PointCloud<pcl::PointXYZ>> pca;
+    pcl::PCA<pcl::PointXYZ> pca;
     try{
-      pca.setInputCloud(obj_cloud.makeShared());
-      centroid = pca.getMean();
-      eigen_values = pca.getEigenValues();
-      eigen_vectors = pca.getEigenVectors();
+        pca.setInputCloud(obj_cloud.makeShared());
+        centroid = pca.getMean();
+        eigen_values = pca.getEigenValues();
+        eigen_vectors = pca.getEigenVectors();
     } catch(pcl::InitFailedException ife)
     {
-      ROS_WARN_STREAM("Failed to compute PCA");
-      ROS_WARN_STREAM("ife: " << ife.what());
+        ROS_WARN_STREAM("Failed to compute PCA");
+        ROS_WARN_STREAM("ife: " << ife.what());
     }
     // Ensure the coordinate system is right handed
     eigen_vectors.col(2) = eigen_vectors.col(0).cross(eigen_vectors.col(1));
@@ -45,8 +45,8 @@ void PCAGraspPlanner::findCloudBoundingBoxPCA(
     // pca.project(obj_cloud, proj);
     pcl::transformPointCloud(obj_cloud, proj, proj_transform);
     
-    pcl::PointCloud<pcl::PointXYZ> proj_min;
-    pcl::PointCloud<pcl::PointXYZ> proj_max;
+    pcl::PointXYZ proj_min;
+    pcl::PointXYZ proj_max;
     pcl::getMinMax3D(proj, proj_min, proj_max);
     bb.size(0) = fabs(proj_max.x-proj_min.x);
     bb.size(1) = fabs(proj_max.y-proj_min.y);
@@ -67,38 +67,36 @@ void PCAGraspPlanner::findCloudBoundingBoxPCA(
     bb.center_pose.pose.orientation.y = orientation.y();
     bb.center_pose.pose.orientation.z = orientation.z();
     bb.center_pose.pose.orientation.w = orientation.w();
-    bb.center_pose.header.frame_id = obj_cloud->header.frame_id; 
+    bb.center_pose.header.frame_id = obj_color_cloud->header.frame_id; 
     bb.center_ort_mat = eigen_vectors;
-   
-    if (debug_)
-      ROS_INFO_STREAM("BB size: " << bb.size);
     
     if (vis_bounding_box_)
     {
-      ROS_INFO_STREAM("eigen values:\n" << eigen_values);
-      ROS_INFO_STREAM("eigen vectors\n" << eigen_vectors);
-      // ROS_INFO_STREAM("e1 X e2 = " << eig3);
-      ROS_INFO_STREAM("pca centroid:\n" << centroid);
-      ROS_INFO_STREAM("box_mean:\n" << box_mean_eigenspace);
-      ROS_INFO_STREAM("Recovered centroid:\n" << rectified_centroid);
-      ROS_INFO_STREAM("Recovered orientation:\n"<< bb.center_pose.orientation);
-      /* visualizes the inputed pointcloud */
-      pcl::visualization::PCLVisualizer viewer("PCL Viewer");
-      viewer.setBackgroundColor(0.0,0.0,0.7);
-      pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(obj_color_cloud);
-      viewer.addPointCloud<pcl::PointCloud<pcl::PointXYZ>RGB>(obj_color_cloud, rgb, "object_cloud");
-      viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2,
+        ROS_INFO_STREAM("BB size: " << bb.size);
+        ROS_INFO_STREAM("eigen values:\n" << eigen_values);
+        ROS_INFO_STREAM("eigen vectors\n" << eigen_vectors);
+        // ROS_INFO_STREAM("e1 X e2 = " << eig3);
+        ROS_INFO_STREAM("pca centroid:\n" << centroid);
+        ROS_INFO_STREAM("box_mean:\n" << box_mean_eigenspace);
+        ROS_INFO_STREAM("Recovered centroid:\n" << rectified_centroid);
+        ROS_INFO_STREAM("Recovered orientation:\n"<< bb.center_pose.pose.orientation);
+        /* visualizes the inputed pointcloud */
+        pcl::visualization::PCLVisualizer viewer("PCL Viewer");
+        viewer.setBackgroundColor(0.0,0.0,0.7);
+        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(obj_color_cloud);
+        viewer.addPointCloud<pcl::PointXYZRGB>(obj_color_cloud, rgb, "object_cloud");
+        viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2,
                                               "object_cloud");
     
-      viewer.addCube(rectified_centroid, orientation, bb.size(0), bb.size(1), bb.size(2));
-      viewer.setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION,
-    	                         pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME,
-    				 "cube");
-      while(!viewer.wasStopped())
-      {
-        viewer.spinOnce();
-      }
-}
+        viewer.addCube(rectified_centroid, orientation, bb.size(0), bb.size(1), bb.size(2));
+        viewer.setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION,
+                                   pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME,
+          			 "cube");
+        while(!viewer.wasStopped())
+        {
+          viewer.spinOnce();
+        }
+    }
 }
 
 void PCAGraspPlanner::genOverheadGraspPoseBB(const BoundingBox& bb, 
@@ -124,9 +122,9 @@ void PCAGraspPlanner::genOverheadGraspPoseBB(const BoundingBox& bb,
     if(z_vec(2) < 0.)
         z_vec *= -1;
     z_vec *= bb.size(max_z_index);
-    grasp_pose.pose.position.x = bb.center_pose.position.x + z_vec(0); 
-    grasp_pose.pose.position.y = bb.center_pose.position.y + z_vec(1); 
-    grasp_pose.pose.position.z = bb.center_pose.position.z + z_vec(2);
+    grasp_pose.pose.position.x = bb.center_pose.pose.position.x + z_vec(0); 
+    grasp_pose.pose.position.y = bb.center_pose.pose.position.y + z_vec(1); 
+    grasp_pose.pose.position.z = bb.center_pose.pose.position.z + z_vec(2);
 
     // Compute the orientation of the overhead grasp.
     // We assume the x axis of the gripper palm/grasping link points
@@ -146,7 +144,7 @@ void PCAGraspPlanner::genOverheadGraspPoseBB(const BoundingBox& bb,
             max_size_idx = i;
         }
     grasp_ort_mat.col(1) = bb.center_ort_mat.col(max_size_idx);
-    grasp_ort_mat.col(2) = eigen_vectors.col(0).cross(eigen_vectors.col(1));
+    grasp_ort_mat.col(2) = grasp_ort_mat.col(0).cross(grasp_ort_mat.col(1));
     Eigen::Quaternionf orientation(grasp_ort_mat);
     // orientation.normalize();
     grasp_pose.pose.orientation.x = orientation.x();
@@ -158,3 +156,7 @@ void PCAGraspPlanner::genOverheadGraspPoseBB(const BoundingBox& bb,
     return;
 }
 
+int main()
+{
+    return 0;
+}
