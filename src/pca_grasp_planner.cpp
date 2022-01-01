@@ -1,9 +1,9 @@
-#include <ros/ros.h>
-#include <pcl_ros/point_cloud.h>
+// #include <ros/ros.h>
+// #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/transforms.h>
+// #include <pcl_ros/transforms.h>
 #include <pcl/common/distances.h>
-#include <pcl_ros/impl/transforms.hpp>
+// #include <pcl_ros/impl/transforms.hpp>
 #include <pcl/common/pca.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/common/common.h>
@@ -12,7 +12,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/passthrough.h>
 #include <tf/tf.h>
-#include <grasp_planners/pca_grasp_planner.h>
+#include <pca_grasp_planner.h>
 
 void PCAGraspPlanner::findCloudBoundingBoxPCA(
                             pcl::PointCloud<pcl::PointXYZRGB>::Ptr& obj_cloud,
@@ -134,11 +134,27 @@ void PCAGraspPlanner::genOverheadGraspPoseBB(const BoundingBox& bb,
     // The y axis points from the right finger to the left.
     Eigen::Matrix3f grasp_ort_mat;
     grasp_ort_mat.col(0) = -1. * z_vec;
-    // Among the other two boudning box orientation axis, we select 
-    // the one with a smaller size/eigenvalues to be the y axis. 
+    // Among the other two bounding box orientation axis, we select 
+    // the one with a smaller size to be the y axis. 
     // This means the robot grasps the thinner side of the object.
-
+    double max_size = -1;
+    int max_size_idx = -1;
+    for(int i = 0; i < 3; ++i)
+        if(i != max_z_index && bb.size[i] > max_size)
+        {
+            max_size = bb.size[i];
+            max_size_idx = i;
+        }
+    grasp_ort_mat.col(1) = bb.center_ort_mat.col(max_size_idx);
+    grasp_ort_mat.col(2) = eigen_vectors.col(0).cross(eigen_vectors.col(1));
+    Eigen::Quaternionf orientation(grasp_ort_mat);
+    // orientation.normalize();
+    grasp_pose.pose.orientation.x = orientation.x();
+    grasp_pose.pose.orientation.y = orientation.y();
+    grasp_pose.pose.orientation.z = orientation.z();
+    grasp_pose.pose.orientation.w = orientation.w();
     grasp_pose.header.frame_id = bb.center_pose.header.frame_id;
+
     return;
 }
 

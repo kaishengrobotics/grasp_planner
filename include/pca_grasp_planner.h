@@ -29,7 +29,7 @@ class PCAGraspPlanner{
         /**
         * Compute the bounding box associated with an object cloud using PCA.
         *
-        * \param obj_cloud The object point cloud.
+        * \param obj_cloud The object point cloud. 
         * \param bounding_box [output] The object bounding box.
         */
         void findCloudBoundingBoxPCA(
@@ -37,7 +37,7 @@ class PCAGraspPlanner{
                             BoundingBox& bb);
         /**
         * Generate a heuristic overhead grasp using the object bounding box.
-        * We assume the z axis of the bounding box is along the gravity direction.
+        * We assume the negative z axis of the bounding box is along the gravity direction.
         * \param bb The bounding box.
         * \param grasp_pose [output] The grasping pose.
         */
